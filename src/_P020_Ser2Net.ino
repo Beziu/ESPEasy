@@ -1,10 +1,10 @@
+#include "_Plugin_Helper.h"
 #ifdef USES_P020
 
 // #######################################################################################################
 // #################################### Plugin 020: Ser2Net ##############################################
 // #######################################################################################################
 
-#include "_Plugin_Helper.h"
 
 #define PLUGIN_020
 #define PLUGIN_ID_020         20
@@ -75,10 +75,10 @@ boolean Plugin_020(byte function, struct EventStruct *event, String& string)
 
       addFormPinSelect(F("Reset target after boot"), F("taskdevicepin1"), Settings.TaskDevicePin1[event->TaskIndex]);
 
-      addFormNumericBox(F("RX Receive Timeout (mSec)"), F("p020_rxwait"), Settings.TaskDevicePluginConfig[event->TaskIndex][0]);
+      addFormNumericBox(F("RX Receive Timeout (mSec)"), F("p020_rxwait"), PCONFIG(0));
 
 
-      byte   choice2 = Settings.TaskDevicePluginConfig[event->TaskIndex][1];
+      byte   choice2 = PCONFIG(1);
       String options2[3];
       options2[0] = F("None");
       options2[1] = F("Generic");
@@ -96,8 +96,8 @@ boolean Plugin_020(byte function, struct EventStruct *event, String& string)
       ExtraTaskSettings.TaskDevicePluginConfigLong[2]      = getFormItemInt(F("p020_data"));
       ExtraTaskSettings.TaskDevicePluginConfigLong[3]      = getFormItemInt(F("p020_parity"));
       ExtraTaskSettings.TaskDevicePluginConfigLong[4]      = getFormItemInt(F("p020_stop"));
-      Settings.TaskDevicePluginConfig[event->TaskIndex][0] = getFormItemInt(F("p020_rxwait"));
-      Settings.TaskDevicePluginConfig[event->TaskIndex][1] = getFormItemInt(F("p020_events"));
+      PCONFIG(0) = getFormItemInt(F("p020_rxwait"));
+      PCONFIG(1) = getFormItemInt(F("p020_events"));
       success                                              = true;
       break;
     }
@@ -147,7 +147,7 @@ boolean Plugin_020(byte function, struct EventStruct *event, String& string)
 
         Plugin_020_init = true;
       }
-      Plugin_020_SerialProcessing = Settings.TaskDevicePluginConfig[event->TaskIndex][1];
+      Plugin_020_SerialProcessing = PCONFIG(1);
       success                     = true;
       break;
     }
@@ -210,7 +210,7 @@ boolean Plugin_020(byte function, struct EventStruct *event, String& string)
             connectionState = 0;
 
             // workaround see: https://github.com/esp8266/Arduino/issues/4497#issuecomment-373023864
-            ser2netClient = WiFiClient();
+            //ser2netClient = WiFiClient();
             ser2netClient.setTimeout(CONTROLLER_CLIENTTIMEOUT_DFLT);
             addLog(LOG_LEVEL_ERROR, F("Ser2N: Client disconnected!"));
           }
@@ -230,7 +230,7 @@ boolean Plugin_020(byte function, struct EventStruct *event, String& string)
       if (Plugin_020_init)
       {
         uint8_t serial_buf[P020_BUFFER_SIZE];
-        int     RXWait = Settings.TaskDevicePluginConfig[event->TaskIndex][0];
+        int     RXWait = PCONFIG(0);
 
         if (RXWait == 0) {
           RXWait = 1;
@@ -238,6 +238,7 @@ boolean Plugin_020(byte function, struct EventStruct *event, String& string)
         int timeOut       = RXWait;
         size_t bytes_read = 0;
 
+        PrepareSend();
         while (timeOut > 0)
         {
           while (Serial.available()) {
@@ -283,12 +284,12 @@ boolean Plugin_020(byte function, struct EventStruct *event, String& string)
         if (Settings.UseRules)
         {
           String message    = (char *)serial_buf;
-          int    NewLinePos = message.indexOf("\r\n");
+          int    NewLinePos = message.indexOf(F("\r\n"));
 
           if (NewLinePos > 0) {
             message = message.substring(0, NewLinePos);
           }
-          String eventString = "";
+          String eventString;
 
           switch (Plugin_020_SerialProcessing)
           {
